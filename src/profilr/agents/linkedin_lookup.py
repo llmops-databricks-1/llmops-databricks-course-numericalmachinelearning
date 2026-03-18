@@ -18,7 +18,7 @@ TOOLS = [
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The search query, e.g. 'Alessandro Alati LinkedIn profile'",
+                        "description": "Search query, e.g. 'John Smith LinkedIn profile'",
                     }
                 },
                 "required": ["query"],
@@ -52,7 +52,12 @@ def lookup(name: str) -> str:
     ]
 
     for iteration in range(MAX_ITERATIONS):
-        logger.debug("LinkedIn lookup iteration {}/{} for '{}'", iteration + 1, MAX_ITERATIONS, name)
+        logger.debug(
+            "LinkedIn lookup iteration {}/{} for '{}'",
+            iteration + 1,
+            MAX_ITERATIONS,
+            name,
+        )
         response = client.chat.completions.create(
             model=MODEL_NAME,
             tools=TOOLS,
@@ -67,15 +72,19 @@ def lookup(name: str) -> str:
                 args = json.loads(tool_call.function.arguments)
                 logger.debug("LinkedIn agent searching: {}", args["query"])
                 result = get_profile_url_tavily(args["query"])
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": result,
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": result,
+                    }
+                )
         else:
             url = choice.message.content
             logger.info("LinkedIn URL found for '{}': {}", name, url)
             return url
 
-    logger.warning("LinkedIn lookup reached max iterations ({}) for '{}'", MAX_ITERATIONS, name)
+    logger.warning(
+        "LinkedIn lookup reached max iterations ({}) for '{}'", MAX_ITERATIONS, name
+    )
     return "Profile not found"

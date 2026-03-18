@@ -21,11 +21,13 @@ def scrape_user_skeets(username: str, num_posts: int = 2) -> list[dict]:
 
     try:
         client = Client(base_url="https://public.api.bsky.app")
-        feed_response = client.app.bsky.feed.get_author_feed({
-            "actor": username,
-            "limit": num_posts,
-            "filter": "posts_no_replies",
-        })
+        feed_response = client.app.bsky.feed.get_author_feed(
+            {
+                "actor": username,
+                "limit": num_posts,
+                "filter": "posts_no_replies",
+            }
+        )
 
         posts = [
             {

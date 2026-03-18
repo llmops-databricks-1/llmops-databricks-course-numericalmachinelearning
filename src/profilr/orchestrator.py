@@ -48,7 +48,7 @@ def agent_search(name: str) -> Summary:
                 "content": (
                     "You are a helpful assistant. Always respond with raw JSON only, "
                     "no markdown, no code blocks. "
-                    'Use exactly this schema: '
+                    "Use exactly this schema: "
                     '{"summary": "...", "facts": ["...", "..."]}'
                 ),
             },
@@ -77,5 +77,7 @@ def agent_search(name: str) -> Summary:
         data = json.loads(content.strip())
         return Summary(**data)
     except (json.JSONDecodeError, ValueError) as e:
-        logger.error("Failed to parse model response for '{}': {}\nContent: {}", name, e, content)
+        logger.error(
+            "Failed to parse model response for '{}': {}\nContent: {}", name, e, content
+        )
         raise ValueError(f"Model returned invalid JSON for '{name}': {e}") from e
