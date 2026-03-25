@@ -3,9 +3,7 @@ from loguru import logger
 from profilr.vector_search import VectorSearchManager
 
 
-def search_github_repos(
-    query: str, username: str = "", num_results: int = 3
-) -> str:
+def search_github_repos(query: str, username: str = "", num_results: int = 3) -> str:
     """Search GitHub repository content using Vector Search.
 
     Queries the Databricks Vector Search index pre-populated by the GitHub

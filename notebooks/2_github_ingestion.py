@@ -14,12 +14,9 @@ Parameters:
 from loguru import logger
 
 # COMMAND ----------
-
 # MAGIC %md
 # MAGIC ## 1. Fetch GitHub Repositories and READMEs
-
 # COMMAND ----------
-
 from profilr.third_party.github import fetch_github_repos
 
 # COMMAND ----------
@@ -61,16 +58,14 @@ def _clean_chunk(text: str) -> str:
         Cleaned text with normalised whitespace.
     """
     t = re.sub(r"(\w)-\s*\n\s*(\w)", r"\1\2", text)  # fix hyphenated line breaks
-    t = re.sub(r"\s*\n\s*", " ", t)                   # collapse newlines to spaces
-    t = re.sub(r"\s+", " ", t)                        # collapse repeated whitespace
+    t = re.sub(r"\s*\n\s*", " ", t)  # collapse newlines to spaces
+    t = re.sub(r"\s+", " ", t)  # collapse repeated whitespace
     result = t.strip()
     logger.debug("Cleaned chunk: {} → {} chars", len(text), len(result))
     return result
 
 
-def fixed_size_chunking(
-    text: str, chunk_size: int = 500, overlap: int = 50
-) -> list[str]:
+def fixed_size_chunking(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
     """Split text into fixed-size character chunks with overlap.
 
     Args:
@@ -94,6 +89,7 @@ def fixed_size_chunking(
         overlap,
     )
     return chunks
+
 
 # COMMAND ----------
 

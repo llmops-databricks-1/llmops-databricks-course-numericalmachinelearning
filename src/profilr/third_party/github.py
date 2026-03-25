@@ -119,9 +119,7 @@ def search_github_by_topic(topic: str, max_repos: int = 3) -> list[dict]:
     return results
 
 
-def get_repo_contributors(
-    owner: str, repo: str, max_contributors: int = 3
-) -> list[dict]:
+def get_repo_contributors(owner: str, repo: str, max_contributors: int = 3) -> list[dict]:
     """Fetch the top contributors for a GitHub repository.
 
     Enriches each contributor with their display name by hitting the user

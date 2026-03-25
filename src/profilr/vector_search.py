@@ -1,7 +1,5 @@
 """Vector Search management for GitHub repository chunks."""
 
-from typing import Any
-
 from databricks.vector_search.client import VectorSearchClient
 from loguru import logger
 
@@ -53,7 +51,7 @@ class VectorSearchManager:
         else:
             logger.info("✓ Vector Search endpoint exists: {}", self.endpoint_name)
 
-    def create_or_get_index(self) -> Any:
+    def create_or_get_index(self) -> object:
         """Create the Delta Sync index if it does not exist, otherwise return it.
 
         Returns:
@@ -90,7 +88,7 @@ class VectorSearchManager:
         """Trigger a sync of the Vector Search index with the source Delta table."""
         index = self.create_or_get_index()
         logger.info("Syncing Vector Search index: {}", self.index_name)
-        index.sync()
+        index.sync()  # type: ignore[union-attr]
         logger.info("✓ Index sync triggered")
 
     def search(
@@ -116,9 +114,6 @@ class VectorSearchManager:
             num_results=num_results,
             filters=filters,
         )
-        columns = [
-            col["name"]
-            for col in results.get("manifest", {}).get("columns", [])
-        ]
+        columns = [col["name"] for col in results.get("manifest", {}).get("columns", [])]
         rows = results.get("result", {}).get("data_array", [])
-        return [dict(zip(columns, row)) for row in rows]
+        return [dict(zip(columns, row, strict=False)) for row in rows]
