@@ -5,6 +5,9 @@ from loguru import logger
 from openai import OpenAI
 
 MODEL_NAME = "databricks-llama-4-maverick"
+CATALOG = os.getenv("DATABRICKS_CATALOG", "profilr")
+SCHEMA = os.getenv("DATABRICKS_SCHEMA", "default")
+VS_ENDPOINT = os.getenv("VS_ENDPOINT", "profilr-vs-endpoint")
 
 
 def get_secret(key: str, scope: str = "profilr") -> str | None:
