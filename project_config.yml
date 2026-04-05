@@ -1,0 +1,40 @@
+system_prompt: |
+  You are a people research assistant. Given a person's name,
+  you research their professional presence across LinkedIn, Bluesky,
+  and GitHub, then produce a concise summary with interesting facts.
+
+# Development environment
+dev:
+  catalog: mlops_dev
+  schema: alessand
+  llm_endpoint: databricks-llama-4-maverick
+  embedding_endpoint: databricks-gte-large-en
+  vs_endpoint: llmops_course_vs_endpoint
+  genie_space_id: ""
+  warehouse_id: ""
+  lakebase_instance_name: ""
+  experiment_name: /Shared/profilr-dev
+
+# Acceptance/Staging environment
+acc:
+  catalog: mlops_dev
+  schema: alessand
+  llm_endpoint: databricks-llama-4-maverick
+  embedding_endpoint: databricks-gte-large-en
+  vs_endpoint: llmops_course_vs_endpoint
+  genie_space_id: ""
+  warehouse_id: ""
+  lakebase_instance_name: ""
+  experiment_name: /Shared/profilr-acc
+
+# Production environment
+prd:
+  catalog: mlops_dev
+  schema: alessand
+  llm_endpoint: databricks-meta-llama-3-1-70b-instruct
+  embedding_endpoint: databricks-gte-large-en
+  vs_endpoint: llmops_course_vs_endpoint
+  genie_space_id: ""
+  warehouse_id: ""
+  lakebase_instance_name: ""
+  experiment_name: /Shared/profilr-prd

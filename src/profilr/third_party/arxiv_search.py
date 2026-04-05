@@ -20,6 +20,7 @@ def search_papers_by_author(name: str, max_results: int = 3) -> list[dict]:
     try:
         client = arxiv.Client()
         search = arxiv.Search(query=f"au:{name}", max_results=max_results)
+        name_parts = {p.lower() for p in name.split()}
         results = [
             {
                 "title": paper.title,
@@ -27,6 +28,9 @@ def search_papers_by_author(name: str, max_results: int = 3) -> list[dict]:
                 "url": paper.pdf_url,
             }
             for paper in client.results(search)
+            if any(
+                name_parts <= {p.lower() for p in str(a).split()} for a in paper.authors
+            )
         ]
         logger.debug("Found {} arXiv papers for '{}'", len(results), name)
         return results

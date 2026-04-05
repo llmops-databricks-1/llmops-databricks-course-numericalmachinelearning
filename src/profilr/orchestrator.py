@@ -1,6 +1,8 @@
 import json
 
+import mlflow
 from loguru import logger
+from mlflow.entities import SpanType
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
 
@@ -11,18 +13,26 @@ from profilr.config import MODEL_NAME, get_client
 from profilr.schemas import Summary
 from profilr.third_party.arxiv_search import search_papers_by_author
 from profilr.third_party.bluesky import scrape_user_skeets
-from profilr.third_party.github import get_repo_contributors, search_github_by_topic
+from profilr.third_party.github import (
+    fetch_github_repos,
+    get_repo_contributors,
+    search_github_by_topic,
+)
 from profilr.third_party.linkedin import scrape_linkedin_profile
 from profilr.tools.github_search import search_github_repos
 
 _SYSTEM_PROMPT = (
-    "You are a helpful assistant. Always respond with raw JSON only, "
-    "no markdown, no code blocks. "
-    "Use exactly this schema: "
-    '{"summary": "...", "facts": ["...", "..."]}'
+    "You are a professional researcher writing concise profiles. "
+    "Always respond with raw JSON only, no markdown, no code blocks. "
+    "Write in a confident, professional tone. "
+    "State facts directly from the provided data — include specific names, "
+    "projects, or paper titles when available. "
+    "Do not use hedging words like 'likely', 'probably', or 'appears to be'. "
+    "If data is limited, write what is known confidently and concisely."
 )
 
 
+@mlflow.trace(span_type=SpanType.CHAIN)
 def agent_search(name: str) -> Summary:
     """Research a person and return a short summary with interesting facts.
 
@@ -45,37 +55,68 @@ def agent_search(name: str) -> Summary:
 
     linkedin_url = linkedin_lookup(name=name)
     logger.info("LinkedIn URL: {}", linkedin_url)
-    linkedin_data = scrape_linkedin_profile(linkedin_profile_url=linkedin_url)
-    logger.info("LinkedIn data fetched: {} fields", len(linkedin_data))
+    if linkedin_url == "Profile not found":
+        logger.warning("LinkedIn profile not found for '{}', skipping scrape", name)
+        linkedin_data = {}
+    else:
+        linkedin_data = scrape_linkedin_profile(linkedin_profile_url=linkedin_url)
+        logger.info("LinkedIn data fetched: {} fields", len(linkedin_data))
 
     bluesky_username = bluesky_lookup(name=name)
     logger.info("Bluesky username: {}", bluesky_username)
-    skeets = scrape_user_skeets(username=bluesky_username)
-    logger.info("Bluesky posts fetched: {}", len(skeets))
+    if bluesky_username == "Profile not found":
+        logger.warning("Bluesky profile not found for '{}', skipping scrape", name)
+        skeets = []
+    else:
+        skeets = scrape_user_skeets(username=bluesky_username)
+        logger.info("Bluesky posts fetched: {}", len(skeets))
 
     github_username = github_lookup(name=name)
     logger.info("GitHub username: {}", github_username)
-    github_context = search_github_repos(query=name, username=github_username)
+    valid_username = github_username if github_username != "Profile not found" else ""
+    github_context = search_github_repos(query=name, username=valid_username)
     logger.info("GitHub context fetched: {} chars", len(github_context))
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        temperature=0,
-        messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Given the LinkedIn information about a person: {linkedin_data}, "
-                    f"and their Bluesky posts: {skeets}, "
-                    f"and their GitHub repository work: {github_context}, "
-                    "create a short summary and two interesting facts about them. "
-                    "Use all available sources. "
-                    "Respond with raw JSON only."
-                ),
-            },
-        ],
+    # Fallback: hit the live GitHub API when the vector index has no data
+    if not github_context and valid_username:
+        logger.info(
+            "Vector search empty — falling back to GitHub API for '{}'", valid_username
+        )
+        repos = fetch_github_repos(username=valid_username, max_repos=3)
+        if repos:
+            github_context = "\n\n---\n\n".join(
+                f"[{r['name']}] {r['description']}\n{r['readme'][:500]}" for r in repos
+            )
+            logger.info("GitHub API fallback fetched: {} chars", len(github_context))
+
+    # arXiv: always search — works well for researchers, empty list otherwise
+    papers = search_papers_by_author(name=name)
+    papers = [{**p, "summary": p["summary"][:300]} for p in papers]
+    logger.info("arXiv papers found: {}", len(papers))
+
+    user_content = (
+        f"Research subject: {name}.\n"
+        f"LinkedIn information: {linkedin_data}\n"
+        f"Bluesky posts: {skeets}\n"
+        f"GitHub repositories: {github_context}\n"
+        f"arXiv papers: {papers}\n"
+        f"Write a profile for {name}. "
+        "In the facts, name at least one specific project, repository, "
+        "paper title, or tool from the provided data. "
+        f"Respond using EXACTLY this JSON format:\n"
+        f'{{"summary": "{name} is ...", "facts": ["...", "..."]}}'
     )
+    with mlflow.start_span("synthesize", span_type=SpanType.LLM) as span:
+        span.set_inputs({"name": name})
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            temperature=0,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
+        )
+        span.set_outputs({"usage": response.usage.model_dump() if response.usage else {}})
 
     return _parse_summary(name=name, response=response)
 
@@ -137,6 +178,7 @@ def discover_contributors(topic: str) -> list[tuple[str, Summary]]:
     return results
 
 
+@mlflow.trace(span_type=SpanType.LLM)
 def _synthesise_contributor(
     client: OpenAI,
     name: str,
