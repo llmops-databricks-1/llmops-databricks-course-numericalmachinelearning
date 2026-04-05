@@ -239,7 +239,10 @@ def _parse_summary(name: str, response: ChatCompletion) -> Summary:
     Raises:
         ValueError: If the response content is not valid JSON or missing fields.
     """
-    content = response.choices[0].message.content.strip()
+    raw = response.choices[0].message.content
+    if raw is None:
+        raise ValueError(f"Model returned empty content for '{name}'")
+    content = raw.strip()
     logger.debug("Model raw response: {}", content[:200])
 
     if content.startswith("```"):

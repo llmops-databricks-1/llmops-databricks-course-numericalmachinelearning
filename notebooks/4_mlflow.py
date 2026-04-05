@@ -74,8 +74,20 @@ logger.info("Running agent for: 'Linus Torvalds'")
 response = agent.predict(test_request)
 if response.output:
     item = response.output[-1]
-    content = item.get("content", []) if isinstance(item, dict) else getattr(item, "content", [])
-    text = (content[0].get("text", "") if isinstance(content[0], dict) else getattr(content[0], "text", "")) if content else str(item)
+    content = (
+        item.get("content", [])
+        if isinstance(item, dict)
+        else getattr(item, "content", [])
+    )
+    text = (
+        (
+            content[0].get("text", "")
+            if isinstance(content[0], dict)
+            else getattr(content[0], "text", "")
+        )
+        if content
+        else str(item)
+    )
     logger.info("Response:\n{}", text)
 else:
     logger.info("Response: No output")
@@ -90,10 +102,7 @@ logger.info("Check MLflow UI for the trace: {}", cfg.experiment_name)
 # COMMAND ----------
 
 with open("../eval_inputs.txt") as f:
-    eval_data = [
-        {"inputs": {"question": line.strip()}}
-        for line in f if line.strip()
-    ]
+    eval_data = [{"inputs": {"question": line.strip()}} for line in f if line.strip()]
 
 logger.info("Loaded {} evaluation inputs", len(eval_data))
 
@@ -107,10 +116,18 @@ def predict_fn(question: str) -> str:
     result = agent.predict(req)
     if result.output:
         item = result.output[-1]
-        content = item.get("content", []) if isinstance(item, dict) else getattr(item, "content", [])
+        content = (
+            item.get("content", [])
+            if isinstance(item, dict)
+            else getattr(item, "content", [])
+        )
         if content:
             first = content[0]
-            return first.get("text", "") if isinstance(first, dict) else getattr(first, "text", "")
+            return (
+                first.get("text", "")
+                if isinstance(first, dict)
+                else getattr(first, "text", "")
+            )
     return ""
 
 

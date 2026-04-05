@@ -1,13 +1,13 @@
 import mlflow
 from mlflow.genai.scorers import Guidelines
 
-
 professional_tone_guideline = Guidelines(
     name="professional_tone",
     guidelines=[
         "The response must use a polite and professional tone throughout",
         "The response must avoid any dismissive, speculative or rude language",
-        "The response must refer to the subject by name, not as 'the individual' or 'the person'",
+        "The response must refer to the subject by name, not as"
+        " 'the individual' or 'the person'",
     ],
     model="databricks:/databricks-gpt-oss-120b",
 )
@@ -16,7 +16,8 @@ factual_guideline = Guidelines(
     name="factual_content",
     guidelines=[
         "The response must include a short biographical summary of the person",
-        "The response must mention at least one specific project, tool, paper title, or technical contribution by name",
+        "The response must mention at least one specific project, tool,"
+        " paper title, or technical contribution by name",
         "The response must focus on the person's professional or technical work",
     ],
     model="databricks:/databricks-gpt-oss-120b",

@@ -4,10 +4,8 @@ from datetime import datetime
 from uuid import uuid4
 
 import mlflow
-from databricks.sdk import WorkspaceClient
 from loguru import logger
 from mlflow import MlflowClient
-from mlflow.entities import SpanType
 from mlflow.models.resources import (
     DatabricksServingEndpoint,
     DatabricksVectorSearchIndex,
@@ -34,6 +32,8 @@ class ProfilrAgent(ResponsesAgent):
         schema: str,
     ) -> None:
         self.llm_endpoint = llm_endpoint
+        # system_prompt is stored for future per-deployment override;
+        # the active prompt lives in orchestrator._SYSTEM_PROMPT for now.
         self.system_prompt = system_prompt
         self.catalog = catalog
         self.schema = schema
@@ -54,9 +54,7 @@ class ProfilrAgent(ResponsesAgent):
                 ),
                 "model_version": os.getenv("MODEL_VERSION", "local"),
             },
-            metadata=(
-                {"mlflow.trace.session": session_id} if session_id else {}
-            ),
+            metadata=({"mlflow.trace.session": session_id} if session_id else {}),
             client_request_id=request_id,
         )
 
@@ -69,16 +67,12 @@ class ProfilrAgent(ResponsesAgent):
 
         summary = agent_search(name)
 
-        response_text = (
-            f"{summary.summary}\n\n"
-            "Interesting facts:\n"
-            + "\n".join(f"- {fact}" for fact in summary.facts)
+        response_text = f"{summary.summary}\n\nInteresting facts:\n" + "\n".join(
+            f"- {fact}" for fact in summary.facts
         )
 
         item = self.create_text_output_item(response_text, str(uuid4()))
-        yield ResponsesAgentStreamEvent(
-            type="response.output_item.done", item=item
-        )
+        yield ResponsesAgentStreamEvent(type="response.output_item.done", item=item)
 
     def predict(self, request: ResponsesAgentRequest) -> ResponsesAgentResponse:
         """Run the research pipeline and return the result."""
@@ -130,9 +124,7 @@ def log_register_agent(
         "llm_endpoint": cfg.llm_endpoint,
     }
 
-    test_request = {
-        "input": [{"role": "user", "content": "Linus Torvalds"}]
-    }
+    test_request = {"input": [{"role": "user", "content": "Linus Torvalds"}]}
 
     mlflow.set_experiment(cfg.experiment_name)
     ts = datetime.now().strftime("%Y-%m-%d")

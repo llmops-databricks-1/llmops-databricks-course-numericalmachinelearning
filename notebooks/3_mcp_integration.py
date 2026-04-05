@@ -117,10 +117,7 @@ logger.info(vector_search_mcp_url)
 # COMMAND ----------
 
 # Connect to Vector Search MCP
-vs_mcp_client = DatabricksMCPClient(
-    server_url=vector_search_mcp_url,
-    workspace_client=w
-)
+vs_mcp_client = DatabricksMCPClient(server_url=vector_search_mcp_url, workspace_client=w)
 
 # List available tools
 vs_tools = vs_mcp_client.list_tools()
@@ -148,8 +145,7 @@ for tool in vs_tools:
 tool_name = f"{cfg.catalog}__{cfg.schema}__github_index"
 
 search_result = vs_mcp_client.call_tool(
-    tool_name,
-    {"query": "machine learning and neural networks"}
+    tool_name, {"query": "machine learning and neural networks"}
 )
 
 logger.info("Search Results:")
@@ -176,9 +172,7 @@ for content in search_result.content:
 # COMMAND ----------
 
 # Define MCP server URLs
-mcp_urls = [
-    f"{host}/api/2.0/mcp/vector-search/{cfg.catalog}/{cfg.schema}"
-]
+mcp_urls = [f"{host}/api/2.0/mcp/vector-search/{cfg.catalog}/{cfg.schema}"]
 
 logger.info(f"Loading tools from {len(mcp_urls)} MCP servers...")
 
@@ -276,21 +270,23 @@ class SimpleAgent:
             assistant_message = response.choices[0].message
 
             if assistant_message.tool_calls:
-                messages.append({
-                    "role": "assistant",
-                    "content": assistant_message.content,
-                    "tool_calls": [
-                        {
-                            "id": tc.id,
-                            "type": "function",
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments,
-                            },
-                        }
-                        for tc in assistant_message.tool_calls
-                    ],
-                })
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": assistant_message.content,
+                        "tool_calls": [
+                            {
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments,
+                                },
+                            }
+                            for tc in assistant_message.tool_calls
+                        ],
+                    }
+                )
 
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
@@ -303,11 +299,13 @@ class SimpleAgent:
                     except Exception as e:
                         result = f"Error: {e!s}"
 
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "content": str(result),
-                    })
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": str(result),
+                        }
+                    )
             else:
                 return assistant_message.content
 
