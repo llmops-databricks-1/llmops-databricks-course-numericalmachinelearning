@@ -1,9 +1,12 @@
 from loguru import logger
 
+from profilr.config import ProjectConfig
 from profilr.vector_search import VectorSearchManager
 
 
-def search_github_repos(query: str, username: str = "", num_results: int = 3) -> str:
+def search_github_repos(
+    query: str, cfg: ProjectConfig, username: str = "", num_results: int = 3
+) -> str:
     """Search GitHub repository content using Vector Search.
 
     Queries the Databricks Vector Search index pre-populated by the GitHub
@@ -14,6 +17,7 @@ def search_github_repos(query: str, username: str = "", num_results: int = 3) ->
 
     Args:
         query: Semantic search query (e.g. 'machine learning projects').
+        cfg: Project configuration (catalog, schema, vs_endpoint).
         username: If provided, filters results to this GitHub username only.
         num_results: Number of top chunks to return. Defaults to 3.
 
@@ -21,7 +25,7 @@ def search_github_repos(query: str, username: str = "", num_results: int = 3) ->
         Formatted string of top matching chunks, or empty string if unavailable.
     """
     try:
-        vs = VectorSearchManager()
+        vs = VectorSearchManager(cfg)
         filters = {"username": username} if username else None
         rows = vs.search(query=query, num_results=num_results, filters=filters)
     except Exception as e:

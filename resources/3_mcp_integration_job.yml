@@ -3,7 +3,7 @@ resources:
     mcp_integration_job:
       name: 3-mcp-integration
       tags:
-        project_name: "brickkit"
+        project_name: "llmops-databricks-course-numericalmachinelearning"
 
       environments:
         - environment_key: default

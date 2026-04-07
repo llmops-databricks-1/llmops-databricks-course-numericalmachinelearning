@@ -21,7 +21,7 @@ from databricks_mcp import DatabricksMCPClient
 from loguru import logger
 from openai import OpenAI
 
-from profilr.config import load_config
+from profilr.config import get_env, load_config
 from profilr.mcp import create_mcp_tools
 
 # Enable nested event loops (required for Databricks notebooks)
@@ -32,7 +32,7 @@ nest_asyncio.apply()
 w = WorkspaceClient()
 host = w.config.host
 
-cfg = load_config("../project_config.yml")
+cfg = load_config("project_config.yml", env=get_env())
 
 # COMMAND ----------
 

@@ -9,7 +9,7 @@ from openai.types.chat import ChatCompletion
 from profilr.agents.bluesky_lookup import lookup as bluesky_lookup
 from profilr.agents.github_lookup import lookup as github_lookup
 from profilr.agents.linkedin_lookup import lookup as linkedin_lookup
-from profilr.config import MODEL_NAME, get_client
+from profilr.config import ProjectConfig, get_client
 from profilr.schemas import Summary
 from profilr.third_party.arxiv_search import search_papers_by_author
 from profilr.third_party.bluesky import scrape_user_skeets
@@ -21,19 +21,9 @@ from profilr.third_party.github import (
 from profilr.third_party.linkedin import scrape_linkedin_profile
 from profilr.tools.github_search import search_github_repos
 
-_SYSTEM_PROMPT = (
-    "You are a professional researcher writing concise profiles. "
-    "Always respond with raw JSON only, no markdown, no code blocks. "
-    "Write in a confident, professional tone. "
-    "State facts directly from the provided data — include specific names, "
-    "projects, or paper titles when available. "
-    "Do not use hedging words like 'likely', 'probably', or 'appears to be'. "
-    "If data is limited, write what is known confidently and concisely."
-)
-
 
 @mlflow.trace(span_type=SpanType.CHAIN)
-def agent_search(name: str) -> Summary:
+def agent_search(name: str, cfg: ProjectConfig) -> Summary:
     """Research a person and return a short summary with interesting facts.
 
     Looks up LinkedIn, Bluesky, and GitHub profiles, scrapes public data
@@ -42,6 +32,7 @@ def agent_search(name: str) -> Summary:
 
     Args:
         name: Full name of the person to research.
+        cfg: Project configuration (LLM endpoint, catalog, schema, prompt).
 
     Returns:
         A Summary containing a short bio and a list of interesting facts.
@@ -53,7 +44,7 @@ def agent_search(name: str) -> Summary:
 
     logger.info("Starting research for: '{}'", name)
 
-    linkedin_url = linkedin_lookup(name=name)
+    linkedin_url = linkedin_lookup(name=name, llm_endpoint=cfg.llm_endpoint)
     logger.info("LinkedIn URL: {}", linkedin_url)
     if linkedin_url == "Profile not found":
         logger.warning("LinkedIn profile not found for '{}', skipping scrape", name)
@@ -71,10 +62,10 @@ def agent_search(name: str) -> Summary:
         skeets = scrape_user_skeets(username=bluesky_username)
         logger.info("Bluesky posts fetched: {}", len(skeets))
 
-    github_username = github_lookup(name=name)
+    github_username = github_lookup(name=name, llm_endpoint=cfg.llm_endpoint)
     logger.info("GitHub username: {}", github_username)
     valid_username = github_username if github_username != "Profile not found" else ""
-    github_context = search_github_repos(query=name, username=valid_username)
+    github_context = search_github_repos(query=name, cfg=cfg, username=valid_username)
     logger.info("GitHub context fetched: {} chars", len(github_context))
 
     # Fallback: hit the live GitHub API when the vector index has no data
@@ -100,8 +91,9 @@ def agent_search(name: str) -> Summary:
         f"Bluesky posts: {skeets}\n"
         f"GitHub repositories: {github_context}\n"
         f"arXiv papers: {papers}\n"
-        f"Write a profile for {name}. "
-        "In the facts, name at least one specific project, repository, "
+        f"Create a short professional summary and two interesting facts about {name}. "
+        f"Use the name '{name}' directly — never write 'the individual' or 'the person'. "
+        "In the facts, you MUST name at least one specific project, repository, "
         "paper title, or tool from the provided data. "
         f"Respond using EXACTLY this JSON format:\n"
         f'{{"summary": "{name} is ...", "facts": ["...", "..."]}}'
@@ -109,10 +101,10 @@ def agent_search(name: str) -> Summary:
     with mlflow.start_span("synthesize", span_type=SpanType.LLM) as span:
         span.set_inputs({"name": name})
         response = client.chat.completions.create(
-            model=MODEL_NAME,
+            model=cfg.llm_endpoint,
             temperature=0,
             messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "system", "content": cfg.system_prompt},
                 {"role": "user", "content": user_content},
             ],
         )
@@ -121,7 +113,7 @@ def agent_search(name: str) -> Summary:
     return _parse_summary(name=name, response=response)
 
 
-def discover_contributors(topic: str) -> list[tuple[str, Summary]]:
+def discover_contributors(topic: str, cfg: ProjectConfig) -> list[tuple[str, Summary]]:
     """Discover top contributors to GitHub repos on a topic and research each one.
 
     Searches GitHub for repositories matching the topic, collects unique
@@ -133,6 +125,7 @@ def discover_contributors(topic: str) -> list[tuple[str, Summary]]:
 
     Args:
         topic: A topic or technology to search for (e.g. 'RAG retrieval').
+        cfg: Project configuration (LLM endpoint, catalog, schema, prompt).
 
     Returns:
         List of (name, Summary) tuples, one per discovered contributor.
@@ -162,11 +155,12 @@ def discover_contributors(topic: str) -> list[tuple[str, Summary]]:
         papers = search_papers_by_author(name=name)
         logger.info("arXiv papers found: {}", len(papers))
 
-        github_context = search_github_repos(query=topic, username=login)
+        github_context = search_github_repos(query=topic, cfg=cfg, username=login)
         logger.info("GitHub context fetched: {} chars", len(github_context))
 
         summary = _synthesise_contributor(
             client=client,
+            cfg=cfg,
             name=name,
             login=login,
             papers=papers,
@@ -181,6 +175,7 @@ def discover_contributors(topic: str) -> list[tuple[str, Summary]]:
 @mlflow.trace(span_type=SpanType.LLM)
 def _synthesise_contributor(
     client: OpenAI,
+    cfg: ProjectConfig,
     name: str,
     login: str,
     papers: list[dict],
@@ -191,6 +186,7 @@ def _synthesise_contributor(
 
     Args:
         client: OpenAI-compatible Databricks client.
+        cfg: Project configuration (LLM endpoint, system prompt).
         name: Contributor's display name.
         login: Contributor's GitHub username.
         papers: List of arXiv paper dicts (title, summary, url).
@@ -204,10 +200,10 @@ def _synthesise_contributor(
         ValueError: If the model response cannot be parsed into a valid Summary.
     """
     response = client.chat.completions.create(
-        model=MODEL_NAME,
+        model=cfg.llm_endpoint,
         temperature=0,
         messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "system", "content": cfg.system_prompt},
             {
                 "role": "user",
                 "content": (
@@ -239,10 +235,7 @@ def _parse_summary(name: str, response: ChatCompletion) -> Summary:
     Raises:
         ValueError: If the response content is not valid JSON or missing fields.
     """
-    raw = response.choices[0].message.content
-    if raw is None:
-        raise ValueError(f"Model returned empty content for '{name}'")
-    content = raw.strip()
+    content = response.choices[0].message.content.strip()
     logger.debug("Model raw response: {}", content[:200])
 
     if content.startswith("```"):

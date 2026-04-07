@@ -17,9 +17,12 @@ load_dotenv()
 
 # COMMAND ----------
 
+from profilr.config import get_env, load_config
 from profilr.orchestrator import agent_search
 
 # COMMAND ----------
+
+cfg = load_config("project_config.yml", env=get_env())
 
 # Use a Databricks widget for parameterisation; fall back to a default for local dev
 try:
@@ -31,5 +34,5 @@ logger.info("Running profilr for: '{}'", name)
 
 # COMMAND ----------
 
-result = agent_search(name=name)
+result = agent_search(name=name, cfg=cfg)
 logger.info("Result: {}", result)

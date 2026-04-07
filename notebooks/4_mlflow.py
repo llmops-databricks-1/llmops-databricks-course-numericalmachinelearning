@@ -1,14 +1,4 @@
 # Databricks notebook source
-# MAGIC %md
-# MAGIC # Week 4: MLflow Tracing, Evaluation, Log & Register
-# MAGIC
-# MAGIC ## Topics Covered:
-# MAGIC - MLflow tracing on the Profilr agent
-# MAGIC - Evaluation with custom scorers and guidelines
-# MAGIC - Logging and registering the agent in Unity Catalog
-
-# COMMAND ----------
-
 import os
 import random
 from datetime import datetime
@@ -20,7 +10,7 @@ from loguru import logger
 from mlflow.types.responses import ResponsesAgentRequest
 
 from profilr.agent import ProfilrAgent, log_register_agent
-from profilr.config import load_config
+from profilr.config import get_env, load_config
 from profilr.evaluation import (
     factual_guideline,
     has_facts_section,
@@ -30,37 +20,19 @@ from profilr.evaluation import (
 )
 
 # COMMAND ----------
-
-cfg = load_config("../project_config.yml")
+# Setup
+cfg = load_config("project_config.yml", env=get_env())
 w = WorkspaceClient()
-
 mlflow.set_experiment(cfg.experiment_name)
-
 logger.info("Config loaded: catalog={}, schema={}", cfg.catalog, cfg.schema)
 
 # COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 1. Create Agent
-
-# COMMAND ----------
-
-agent = ProfilrAgent(
-    llm_endpoint=cfg.llm_endpoint,
-    system_prompt=cfg.system_prompt,
-    catalog=cfg.catalog,
-    schema=cfg.schema,
-)
-
+# Create agent
+agent = ProfilrAgent(cfg=cfg)
 logger.info("ProfilrAgent created")
 
 # COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 2. Test with Tracing
-
-# COMMAND ----------
-
+# Test with tracing
 timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 session_id = f"s-{timestamp}-{random.randint(100000, 999999)}"
 request_id = f"req-{timestamp}-{random.randint(100000, 999999)}"
@@ -92,15 +64,8 @@ if response.output:
 else:
     logger.info("Response: No output")
 
-logger.info("Check MLflow UI for the trace: {}", cfg.experiment_name)
-
 # COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 3. Evaluation
-
-# COMMAND ----------
-
+# Evaluation
 with open("../eval_inputs.txt") as f:
     eval_data = [{"inputs": {"question": line.strip()}} for line in f if line.strip()]
 
@@ -131,8 +96,6 @@ def predict_fn(question: str) -> str:
     return ""
 
 
-# COMMAND ----------
-
 results = mlflow.genai.evaluate(
     predict_fn=predict_fn,
     data=eval_data,
@@ -144,16 +107,10 @@ results = mlflow.genai.evaluate(
         factual_guideline,
     ],
 )
-
 logger.info("Evaluation metrics: {}", results.metrics)
 
 # COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 4. Log & Register
-
-# COMMAND ----------
-
+# Log & register
 git_sha = os.getenv("GIT_SHA", "local")
 run_id = os.getenv("MLFLOW_RUN_ID", str(uuid4())[:8])
 model_name = f"{cfg.catalog}.{cfg.schema}.profilr_agent"

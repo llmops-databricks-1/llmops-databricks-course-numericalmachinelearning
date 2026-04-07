@@ -24,19 +24,8 @@ from profilr.orchestrator import agent_search
 class ProfilrAgent(ResponsesAgent):
     """MLflow-compatible agent that wraps the Profilr research pipeline."""
 
-    def __init__(
-        self,
-        llm_endpoint: str,
-        system_prompt: str,
-        catalog: str,
-        schema: str,
-    ) -> None:
-        self.llm_endpoint = llm_endpoint
-        # system_prompt is stored for future per-deployment override;
-        # the active prompt lives in orchestrator._SYSTEM_PROMPT for now.
-        self.system_prompt = system_prompt
-        self.catalog = catalog
-        self.schema = schema
+    def __init__(self, cfg: ProjectConfig) -> None:
+        self.cfg = cfg
 
     def predict_stream(
         self, request: ResponsesAgentRequest
@@ -65,7 +54,7 @@ class ProfilrAgent(ResponsesAgent):
         )
         logger.info("ProfilrAgent researching: '{}'", name)
 
-        summary = agent_search(name)
+        summary = agent_search(name, self.cfg)
 
         response_text = f"{summary.summary}\n\nInteresting facts:\n" + "\n".join(
             f"- {fact}" for fact in summary.facts
@@ -122,6 +111,9 @@ def log_register_agent(
         "schema": cfg.schema,
         "system_prompt": cfg.system_prompt,
         "llm_endpoint": cfg.llm_endpoint,
+        "embedding_endpoint": cfg.embedding_endpoint,
+        "vs_endpoint": cfg.vs_endpoint,
+        "experiment_name": cfg.experiment_name,
     }
 
     test_request = {"input": [{"role": "user", "content": "Linus Torvalds"}]}

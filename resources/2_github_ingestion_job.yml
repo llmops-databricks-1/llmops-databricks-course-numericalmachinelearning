@@ -3,7 +3,7 @@ resources:
     github_ingestion_job:
       name: 2-github-ingestion
       tags:
-        project_name: "brickkit"
+        project_name: "llmops-databricks-course-numericalmachinelearning"
 
       environments:
         - environment_key: default

@@ -18,9 +18,12 @@ load_dotenv()
 
 # COMMAND ----------
 
+from profilr.config import get_env, load_config
 from profilr.orchestrator import discover_contributors
 
 # COMMAND ----------
+
+cfg = load_config("project_config.yml", env=get_env())
 
 try:
     topic = dbutils.widgets.get("topic")  # noqa: F821
@@ -31,7 +34,7 @@ logger.info("Discovering contributors for topic: '{}'", topic)
 
 # COMMAND ----------
 
-results = discover_contributors(topic=topic)
+results = discover_contributors(topic=topic, cfg=cfg)
 logger.info("Research complete: {} contributors found", len(results))
 
 # COMMAND ----------

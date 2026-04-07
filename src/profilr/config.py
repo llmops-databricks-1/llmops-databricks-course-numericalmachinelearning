@@ -28,62 +28,81 @@ class ProjectConfig:
     system_prompt: str = field(default="", repr=False)
 
     @classmethod
-    def from_yaml(cls, config_path: str = "../project_config.yml") -> "ProjectConfig":
-        """Load config from YAML file for the current environment.
+    def from_yaml(
+        cls, config_path: str = "project_config.yml", env: str = "dev"
+    ) -> "ProjectConfig":
+        """Load config from YAML file for the given environment.
 
         Args:
             config_path: Path to project_config.yml.
+            env: Environment name ('dev', 'acc', or 'prd').
 
         Returns:
-            ProjectConfig for the current environment.
+            ProjectConfig for the requested environment.
         """
-        return load_config(config_path)
+        return load_config(config_path, env)
 
 
 def get_env() -> str:
-    """Detect the current deployment environment.
+    """Get the current deployment environment.
 
-    Reads the DATABRICKS_ENV environment variable.
-    Defaults to 'dev' when running locally or in notebooks without the variable set.
+    Reads from the 'env' Databricks widget, which is injected by the job
+    runner via base_parameters. Falls back to 'dev' when running locally
+    (where dbutils is not available).
 
     Returns:
         One of 'dev', 'acc', or 'prd'.
     """
-    return os.getenv("DATABRICKS_ENV", "dev")
+    try:
+        from databricks.sdk.runtime import dbutils  # noqa: PLC0415
+
+        return dbutils.widgets.get("env")
+    except Exception:
+        return "dev"
 
 
-def load_config(config_path: str = "../project_config.yml") -> ProjectConfig:
+def load_config(
+    config_path: str = "project_config.yml", env: str | None = None
+) -> ProjectConfig:
     """Load environment-specific configuration from a YAML file.
 
+    Searches up to 3 parent directories to locate the config file, so it
+    resolves correctly whether called from a notebook, a job, or locally.
+
     Args:
-        config_path: Path to the project_config.yml file, relative to the
-            notebook or absolute. Defaults to '../project_config.yml' which
-            resolves correctly from notebooks/ to the project root.
+        config_path: Filename or path to project_config.yml.
+        env: Environment to load ('dev', 'acc', 'prd'). If None, calls
+            get_env() to detect it from the Databricks widget.
 
     Returns:
-        A ProjectConfig populated with values for the current environment.
+        A ProjectConfig populated with values for the requested environment.
     """
-    env = get_env()
-    path = Path(config_path).expanduser()
+    if env is None:
+        env = get_env()
+
+    path = Path(config_path)
+    if not path.is_absolute():
+        current = Path.cwd()
+        for _ in range(3):
+            candidate = current / config_path
+            if candidate.exists():
+                path = candidate
+                break
+            current = current.parent
+
     with path.open() as f:
         raw = yaml.safe_load(f)
 
-    env_cfg = raw.get(env, raw.get("dev", {}))
+    if env not in raw:
+        raise ValueError(
+            f"Environment '{env}' not found in {path}. Available: {list(raw.keys())}"
+        )
+
+    env_cfg = raw[env]
     system_prompt = raw.get("system_prompt", "")
 
     logger.debug("Loaded config for environment '{}' from {}", env, path)
     return ProjectConfig(system_prompt=system_prompt, **env_cfg)
-
-
-# ---------------------------------------------------------------------------
-# Backward-compatible module-level constants
-# (used by existing agents, tools, and orchestrator)
-# ---------------------------------------------------------------------------
-
-MODEL_NAME = os.getenv("LLM_ENDPOINT", "databricks-llama-4-maverick")
-CATALOG = os.getenv("DATABRICKS_CATALOG", "mlops_dev")
-SCHEMA = os.getenv("DATABRICKS_SCHEMA", "alessand")
-VS_ENDPOINT = os.getenv("VS_ENDPOINT", "llmops_course_vs_endpoint")
 
 
 # ---------------------------------------------------------------------------
