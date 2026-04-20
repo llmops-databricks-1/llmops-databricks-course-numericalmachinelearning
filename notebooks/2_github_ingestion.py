@@ -130,9 +130,10 @@ from pyspark.sql import SparkSession
 from pyspark.sql import types as T
 from pyspark.sql.functions import current_timestamp
 
-from profilr.config import CATALOG, SCHEMA
+from profilr.config import get_env, load_config
 
 spark = SparkSession.builder.getOrCreate()
+cfg = load_config("project_config.yml", env=get_env())
 
 schema = T.StructType(
     [
@@ -147,7 +148,7 @@ schema = T.StructType(
 )
 # ingest_ts (TimestampType) is added via withColumn below
 
-chunks_table = f"{CATALOG}.{SCHEMA}.github_chunks"
+chunks_table = f"{cfg.catalog}.{cfg.schema}.github_chunks"
 chunks_df = spark.createDataFrame(records, schema=schema).withColumn(
     "ingest_ts", current_timestamp()
 )
@@ -183,7 +184,7 @@ logger.info("Change Data Feed enabled on {}", chunks_table)
 
 from profilr.vector_search import VectorSearchManager
 
-vs_manager = VectorSearchManager()
+vs_manager = VectorSearchManager(cfg)
 vs_manager.create_or_get_index()
 vs_manager.sync_index()
 

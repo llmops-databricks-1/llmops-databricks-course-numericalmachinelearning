@@ -3,7 +3,7 @@
 from databricks.vector_search.client import VectorSearchClient
 from loguru import logger
 
-from profilr.config import CATALOG, SCHEMA, VS_ENDPOINT
+from profilr.config import ProjectConfig
 
 _EMBEDDING_MODEL = "databricks-gte-large-en"
 
@@ -17,13 +17,13 @@ class VectorSearchManager:
 
     def __init__(
         self,
-        endpoint_name: str = VS_ENDPOINT,
+        cfg: ProjectConfig,
         embedding_model: str = _EMBEDDING_MODEL,
     ) -> None:
-        self.endpoint_name = endpoint_name
+        self.endpoint_name = cfg.vs_endpoint
         self.embedding_model = embedding_model
-        self.catalog = CATALOG
-        self.schema = SCHEMA
+        self.catalog = cfg.catalog
+        self.schema = cfg.schema
         self.client = VectorSearchClient()
         self.index_name = f"{self.catalog}.{self.schema}.github_index"
         self.source_table = f"{self.catalog}.{self.schema}.github_chunks"

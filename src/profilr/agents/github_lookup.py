@@ -2,7 +2,7 @@ import json
 
 from loguru import logger
 
-from profilr.config import MODEL_NAME, get_client
+from profilr.config import get_client
 from profilr.tools.tavily_search import get_profile_url_tavily
 
 MAX_ITERATIONS = 5
@@ -28,7 +28,7 @@ TOOLS = [
 ]
 
 
-def lookup(name: str) -> str:
+def lookup(name: str, llm_endpoint: str) -> str:
     """Return the GitHub username for the given person name.
 
     Uses an LLM agent with Tavily web search to find the correct GitHub username.
@@ -36,6 +36,7 @@ def lookup(name: str) -> str:
 
     Args:
         name: Full name of the person to look up.
+        llm_endpoint: Databricks model serving endpoint name.
 
     Returns:
         The GitHub username (without @ or URL prefix),
@@ -60,7 +61,7 @@ def lookup(name: str) -> str:
             name,
         )
         response = client.chat.completions.create(
-            model=MODEL_NAME,
+            model=llm_endpoint,
             tools=TOOLS,
             messages=messages,
             temperature=0,

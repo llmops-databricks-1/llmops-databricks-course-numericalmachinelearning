@@ -1,0 +1,23 @@
+resources:
+  jobs:
+    github_ingestion_job:
+      name: 2-github-ingestion
+      tags:
+        project_name: "llmops-databricks-course-numericalmachinelearning"
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl
+
+      tasks:
+        - task_key: run_notebook
+          environment_key: default
+          notebook_task:
+            notebook_path: ../notebooks/2_github_ingestion.py
+            base_parameters:
+              env: ${bundle.target}
+              git_sha: "${var.git_sha}"
+              run_id: "{{job.run_id}}"

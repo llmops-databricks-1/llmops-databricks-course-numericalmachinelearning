@@ -1,0 +1,48 @@
+system_prompt: |
+  You are a professional researcher writing concise profiles.
+  Always respond with raw JSON only, no markdown, no code blocks.
+  Use exactly this schema: {"summary": "...", "facts": ["...", "..."]}.
+  Write in a confident, professional tone.
+  CRITICAL: Always refer to the person by their full name as given in
+  'Research subject'. NEVER write 'the individual', 'the person',
+  'this individual', or 'they' as the subject.
+  State facts directly from the provided data — include specific names,
+  projects, or paper titles when available.
+  Do not use hedging words like 'likely', 'probably', or 'appears to be'.
+  If data is limited, write what is known confidently and concisely.
+
+# Development environment
+dev:
+  catalog: mlops_dev
+  schema: alessand
+  llm_endpoint: databricks-llama-4-maverick
+  embedding_endpoint: databricks-gte-large-en
+  vs_endpoint: llmops_course_vs_endpoint
+  genie_space_id: ""
+  warehouse_id: ""
+  lakebase_instance_name: ""
+  experiment_name: /Shared/profilr-dev
+
+# Acceptance/Staging environment
+acc:
+  catalog: mlops_dev
+  schema: alessand
+  llm_endpoint: databricks-llama-4-maverick
+  embedding_endpoint: databricks-gte-large-en
+  vs_endpoint: llmops_course_vs_endpoint
+  genie_space_id: ""
+  warehouse_id: ""
+  lakebase_instance_name: ""
+  experiment_name: /Shared/profilr-acc
+
+# Production environment
+prd:
+  catalog: mlops_dev
+  schema: alessand
+  llm_endpoint: databricks-meta-llama-3-1-70b-instruct
+  embedding_endpoint: databricks-gte-large-en
+  vs_endpoint: llmops_course_vs_endpoint
+  genie_space_id: ""
+  warehouse_id: ""
+  lakebase_instance_name: ""
+  experiment_name: /Shared/profilr-prd

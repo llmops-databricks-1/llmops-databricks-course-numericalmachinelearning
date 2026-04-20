@@ -37,7 +37,7 @@ resources:
     <resource_key>:
       name: <job_display_name>
       tags:
-        project_name: "brickkit"
+        project_name: "llmops-databricks-course-numericalmachinelearning"
 
       environments:
         - environment_key: default
