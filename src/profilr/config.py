@@ -25,6 +25,7 @@ class ProjectConfig:
     genie_space_id: str = ""
     warehouse_id: str = ""
     lakebase_instance_name: str = ""
+    usage_policy_id: str = ""
     system_prompt: str = field(default="", repr=False)
 
     @classmethod
@@ -35,12 +36,33 @@ class ProjectConfig:
 
         Args:
             config_path: Path to project_config.yml.
-            env: Environment name ('dev', 'acc', or 'prd').
+            env: Environment name ('dev' or 'acc').
 
         Returns:
             ProjectConfig for the requested environment.
         """
         return load_config(config_path, env)
+
+
+def get_widget(name: str, default: str = "") -> str:
+    """Get a Databricks widget value with a fallback default.
+
+    Works both in Databricks job tasks (where parameters are passed via
+    base_parameters) and locally (where dbutils is not available).
+
+    Args:
+        name: Widget name.
+        default: Default value if widget is not available.
+
+    Returns:
+        Widget value or default.
+    """
+    try:
+        from databricks.sdk.runtime import dbutils  # noqa: PLC0415
+
+        return dbutils.widgets.get(name)
+    except Exception:
+        return default
 
 
 def get_env() -> str:
@@ -51,7 +73,7 @@ def get_env() -> str:
     (where dbutils is not available).
 
     Returns:
-        One of 'dev', 'acc', or 'prd'.
+        One of 'dev' or 'acc'.
     """
     try:
         from databricks.sdk.runtime import dbutils  # noqa: PLC0415
@@ -71,7 +93,7 @@ def load_config(
 
     Args:
         config_path: Filename or path to project_config.yml.
-        env: Environment to load ('dev', 'acc', 'prd'). If None, calls
+        env: Environment to load ('dev' or 'acc'). If None, calls
             get_env() to detect it from the Databricks widget.
 
     Returns:
