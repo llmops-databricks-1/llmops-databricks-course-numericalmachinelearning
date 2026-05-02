@@ -21,6 +21,7 @@ dev:
   genie_space_id: ""
   warehouse_id: ""
   lakebase_instance_name: ""
+  usage_policy_id: 686c435d-90af-4c40-9ca4-442d4a3d8899
   experiment_name: /Shared/profilr-dev
 
 # Acceptance/Staging environment
@@ -33,16 +34,5 @@ acc:
   genie_space_id: ""
   warehouse_id: ""
   lakebase_instance_name: ""
+  usage_policy_id: 686c435d-90af-4c40-9ca4-442d4a3d8899
   experiment_name: /Shared/profilr-acc
-
-# Production environment
-prd:
-  catalog: mlops_dev
-  schema: alessand
-  llm_endpoint: databricks-meta-llama-3-1-70b-instruct
-  embedding_endpoint: databricks-gte-large-en
-  vs_endpoint: llmops_course_vs_endpoint
-  genie_space_id: ""
-  warehouse_id: ""
-  lakebase_instance_name: ""
-  experiment_name: /Shared/profilr-prd

@@ -1,0 +1,35 @@
+resources:
+  jobs:
+    register_deploy_agent_job:
+      name: register-deploy-agent
+      tags:
+        project_name: "llmops-databricks-course-numericalmachinelearning"
+        environment: ${bundle.target}
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl
+
+      tasks:
+        - task_key: log_register_agent
+          environment_key: default
+          notebook_task:
+            notebook_path: ../notebooks/4_mlflow.py
+            base_parameters:
+              env: ${bundle.target}
+              git_sha: "${var.git_sha}"
+              run_id: "{{job.run_id}}"
+
+        - task_key: deploy_agent
+          depends_on:
+            - task_key: log_register_agent
+          environment_key: default
+          notebook_task:
+            notebook_path: ../notebooks/5_endpoint_deployment.py
+            base_parameters:
+              env: ${bundle.target}
+              git_sha: "${var.git_sha}"
+              run_id: "{{job.run_id}}"
