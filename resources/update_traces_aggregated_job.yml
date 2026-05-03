@@ -1,0 +1,28 @@
+resources:
+  jobs:
+    update_traces_aggregated:
+      name: profilr-update-and-evaluate-traces
+      schedule:
+        quartz_cron_expression: "0 0 7 * * ?"
+        timezone_id: "Europe/Amsterdam"
+        pause_status: ${var.schedule_pause_status}
+      tags:
+        project_name: "llmops-databricks-course-numericalmachinelearning"
+        environment: ${bundle.target}
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl
+
+      tasks:
+        - task_key: update_and_evaluate
+          environment_key: default
+          notebook_task:
+            notebook_path: ../notebooks/6_production_monitoring.py
+            base_parameters:
+              env: ${bundle.target}
+              git_sha: "${var.git_sha}"
+              run_id: "{{job.run_id}}"
