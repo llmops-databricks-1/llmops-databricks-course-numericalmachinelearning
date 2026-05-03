@@ -52,7 +52,7 @@ logger.info("Aggregated table: {}", aggregated_table)
 # Helpers to extract fields from MLflow trace objects
 
 
-def extract_response_text(response) -> str | None:
+def extract_response_text(response: str | dict | None) -> str | None:
     """Extract plain text from the agent response JSON."""
     if response is None:
         return None
@@ -75,7 +75,7 @@ def extract_response_text(response) -> str | None:
     return None
 
 
-def extract_request_preview(request) -> str:
+def extract_request_preview(request: str | dict | None) -> str:
     """Extract the user query from the request JSON."""
     if isinstance(request, str):
         try:
@@ -92,19 +92,25 @@ def extract_request_preview(request) -> str:
     return str(request)[:200]
 
 
-def compute_span_metrics(spans) -> dict:
+def compute_span_metrics(spans: list | None) -> dict:
     """Count LLM calls, tool calls, and total tokens from a trace's spans."""
     call_llm_count = 0
     tool_count = 0
     total_tokens = 0
-    for span in (spans or []):
-        name = getattr(span, "name", None) or (span.get("name") if isinstance(span, dict) else None)
+    for span in spans or []:
+        name = getattr(span, "name", None) or (
+            span.get("name") if isinstance(span, dict) else None
+        )
         if name == "call_llm":
             call_llm_count += 1
             try:
                 attrs = getattr(span, "attributes", {}) or {}
                 outputs_str = attrs.get("mlflow.spanOutputs", "{}")
-                outputs = json.loads(outputs_str) if isinstance(outputs_str, str) else outputs_str
+                outputs = (
+                    json.loads(outputs_str)
+                    if isinstance(outputs_str, str)
+                    else outputs_str
+                )
                 total_tokens += outputs.get("usage", {}).get("total_tokens", 0)
             except Exception:
                 pass
@@ -117,10 +123,12 @@ def compute_span_metrics(spans) -> dict:
     }
 
 
-def get_assessment_value(assessments, name: str) -> str | None:
+def get_assessment_value(assessments: list | None, name: str) -> str | None:
     """Extract the feedback value for a named assessment."""
-    for a in (assessments or []):
-        a_name = getattr(a, "name", None) or (a.get("name") if isinstance(a, dict) else None)
+    for a in assessments or []:
+        a_name = getattr(a, "name", None) or (
+            a.get("name") if isinstance(a, dict) else None
+        )
         if a_name == name:
             try:
                 return a.feedback.value
@@ -155,11 +163,13 @@ for _, row in unevaluated_df.iterrows():
     response_text = extract_response_text(row.get("response"))
     if response_text is None:
         continue
-    records.append({
-        "trace_id": row["trace_id"],
-        "inputs": {"query": extract_request_preview(row.get("request"))},
-        "outputs": response_text,
-    })
+    records.append(
+        {
+            "trace_id": row["trace_id"],
+            "inputs": {"query": extract_request_preview(row.get("request"))},
+            "outputs": response_text,
+        }
+    )
 
 eval_pdf = pd.DataFrame(records)
 logger.info("Traces ready for evaluation: {}", len(eval_pdf))
@@ -221,7 +231,8 @@ all_traces_df = mlflow.search_traces(
     max_results=500,
 )
 
-def score(assessments, name, pass_val):
+
+def score(assessments: list | None, name: str, pass_val: str) -> int:
     """Return 1 if the named assessment matches pass_val, else 0."""
     val = get_assessment_value(assessments, name)
     return 1 if val == pass_val else 0
@@ -232,21 +243,23 @@ for _, row in all_traces_df.iterrows():
     response_text = extract_response_text(row.get("response"))
     span_metrics = compute_span_metrics(row.get("spans"))
     assessments = row.get("assessments") or []
-    rows.append({
-        "trace_id": str(row.get("trace_id", "")),
-        "request_time": row.get("timestamp_ms"),
-        "request_preview": extract_request_preview(row.get("request")),
-        "response_text": response_text or "",
-        "latency_seconds": (row.get("execution_time_ms") or 0) / 1000.0,
-        "call_llm_exec_count": span_metrics["call_llm_exec_count"],
-        "tool_call_count": span_metrics["tool_call_count"],
-        "total_tokens_used": span_metrics["total_tokens_used"],
-        "under_300_words": score(assessments, "under_300_words", "true"),
-        "summary_not_empty": score(assessments, "summary_not_empty", "true"),
-        "has_facts_section": score(assessments, "has_facts_section", "true"),
-        "professional_tone": score(assessments, "professional_tone", "Pass"),
-        "factual_content": score(assessments, "factual_content", "Pass"),
-    })
+    rows.append(
+        {
+            "trace_id": str(row.get("trace_id", "")),
+            "request_time": row.get("timestamp_ms"),
+            "request_preview": extract_request_preview(row.get("request")),
+            "response_text": response_text or "",
+            "latency_seconds": (row.get("execution_time_ms") or 0) / 1000.0,
+            "call_llm_exec_count": span_metrics["call_llm_exec_count"],
+            "tool_call_count": span_metrics["tool_call_count"],
+            "total_tokens_used": span_metrics["total_tokens_used"],
+            "under_300_words": score(assessments, "under_300_words", "true"),
+            "summary_not_empty": score(assessments, "summary_not_empty", "true"),
+            "has_facts_section": score(assessments, "has_facts_section", "true"),
+            "professional_tone": score(assessments, "professional_tone", "Pass"),
+            "factual_content": score(assessments, "factual_content", "Pass"),
+        }
+    )
 
 aggregated_pdf = pd.DataFrame(rows)
 logger.info("Aggregated {} traces for dashboard", len(aggregated_pdf))

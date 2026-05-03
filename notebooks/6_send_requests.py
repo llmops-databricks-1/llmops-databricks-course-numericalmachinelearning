@@ -65,9 +65,11 @@ for i, query in enumerate(queries):
         client.responses.create(
             model=endpoint_name,
             input=[{"role": "user", "content": query}],
-            extra_body={"custom_inputs": {
-                "session_id": session_id,
-            }},
+            extra_body={
+                "custom_inputs": {
+                    "session_id": session_id,
+                }
+            },
         )
     except Exception as e:
         logger.error("Request failed: {}", e)
