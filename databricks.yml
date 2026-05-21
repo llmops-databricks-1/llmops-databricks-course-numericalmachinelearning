@@ -18,6 +18,9 @@ variables:
   schedule_pause_status:
     description: "PAUSED or UNPAUSED for scheduled jobs"
     default: "PAUSED"
+  warehouse_id:
+    description: "SQL warehouse ID for the monitoring dashboard"
+    default: "96e26e80fcd91931"
 
 artifacts:
   default:
